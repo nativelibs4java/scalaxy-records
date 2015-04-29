@@ -38,15 +38,15 @@ package object records {
     import c.universe._
 
     // Would normally bring a c.WeakTypeTag, but it seems to not work with higher-kinded types here, so getting the type straight from the macro call.
-    val TypeApply(_, List(typeClassTpt)) = c.macroApplication
+    val q"${_}[$typeClassTpt]" = c.macroApplication
     val typeClassTpe = typeClassTpt.tpe
-    // Get the type parameter (`C` in the example above).
+    // Get the unique type parameter (`C[_]` in the example above).
     val List(typeParam) = typeClassTpe.typeConstructor.typeParams
 
     val abstractTerms =
       typeClassTpe.members.filter(_.isTerm).map(_.asTerm).filter(_.isAbstract).toSeq
         .map({ term =>
-          // Get the type argument given to `C`. For instance gets `String` out of `C[String]`.
+          // Get the type argument given to `C[_]`. For instance gets `String` out of `C[String]`.
           val TypeRef(_, _, List(tpe)) = term.typeSignature.baseType(typeParam)
           term.name -> tpe
         }).toMap
