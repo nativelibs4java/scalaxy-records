@@ -29,7 +29,7 @@ package object records {
    * ```
    *
    * This method would return:
-   * (typeOf[User], C, Map(name -> String, birthDate -> Date, id -> Long))
+   * `(typeOf[User], C, Map(name -> typeOf[String], birthDate -> typeOf[Date], id -> typeOf[Long]))`
    */
   private[this]
   def getRecordInfo(c: Context)
