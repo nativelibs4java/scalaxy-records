@@ -1,4 +1,4 @@
-# Scalaxy/Records
+# Scalaxy/Records [![Build Status](https://travis-ci.org/nativelibs4java/scalaxy-records.svg?branch=master)](https://travis-ci.org/nativelibs4java/scalaxy-records)
 
 *VERY EARLY STAGE, THIS IS A PROOF-OF-CONCEPT*
 
