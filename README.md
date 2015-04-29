@@ -1,5 +1,7 @@
 # Scalaxy/Records
 
+*VERY EARLY STAGE, THIS IS A PROOF-OF-CONCEPT*
+
 This is an abstraction of how data records can be stored in arrays of columns rather than rows of objects.
 
 ```scala
