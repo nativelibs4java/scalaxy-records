@@ -8,3 +8,9 @@ cache:
   - $HOME/.m2
   - $HOME/.ivy2
   - $HOME/.sbt
+after_success:
+- '[[ $TRAVIS_BRANCH == "master" ]] && { sbt ++$TRAVIS_SCALA_VERSION publish; };'
+env:
+  global:
+  - secure: SsKJ8jxMqrcGhuGnNfo83mLkGir9r+0O8VEjy63qnbeSGeT1CWUgWt4EdJ6Wt7mxY0NHvN+ZGCs+EE0o0+9Lm/IGtANw96mNLWkbt2seHIk2syegPWDZBgosQtRpt7gJ/VFZp51OAlMNLIgRWOOhNnI1mxZZ9nI9fkfFkK4QcgI=
+  - secure: asy0LKTeiNFArbEmqSO2VqIdp5uixwIMYs5ezng91t04screfEjx/TbyKhyCDG1tvorCN6cb7GySVnNWKP0kY/a/L6V+GS+cKzanK5FR/Zd/unueI3o1T9LhI3E0E6bwBn1S2fMJdRQXqkXF3g8d3WZUyIq3OzNdSiuUe9Cl5Os=
