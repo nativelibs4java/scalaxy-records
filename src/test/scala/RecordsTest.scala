@@ -58,7 +58,34 @@ class AddressArray(size: Int) extends Address[scala.Array] {
 //  val kudosCount = Pointer.allocateArray(classOf[Int], size)
 //}
 
-class UserCursor(val length: Int, array: Record[User]#Array) extends User[Accessors] with CursorLike {//Record[User]#Cursor {
+// Note: making this final degrates performance to the level of the generated cursor.
+// Really not sure why, needs investigation
+class UserCursor(array: Record[User]#Array, val length: Int) extends User[Accessors] with CursorLike {//Record[User]#Cursor {
+override val name = new Accessors[String] {
+    @inline def apply() = array.name(row)
+    @inline def update(value: String) = array.name(row) = value
+  }
+  override val birthDate = new Accessors[Date] {
+    @inline def apply() = array.birthDate(row)
+    @inline def update(value: Date) = array.birthDate(row) = value
+  }
+  override val kudosCount = new Accessors[Int] {
+    @inline def apply() = array.kudosCount(row)
+    @inline def update(value: Int) = array.kudosCount(row) = value
+  }
+  //  override val address = new Address[Accessors] with CursorLike {
+  //    override val length = UserCursor.this.length
+  //    val zipCode = new Accessors[String] {
+  //      def apply() = array.address.zipCode(row)
+  //      def update(value: String) = array.address.zipCode(row) = value
+  //    }
+  //    val city = new Accessors[String] {
+  //      def apply() = array.address.city(row)
+  //      def update(value: String) = array.address.city(row) = value
+  //    }
+  //  }
+}
+final class FinalUserCursor(array: Record[User]#Array, val length: Int) extends User[Accessors] with CursorLike {//Record[User]#Cursor {
   override val name = new Accessors[String] {
     @inline def apply() = array.name(row)
     @inline def update(value: String) = array.name(row) = value
@@ -71,17 +98,17 @@ class UserCursor(val length: Int, array: Record[User]#Array) extends User[Access
     @inline def apply() = array.kudosCount(row)
     @inline def update(value: Int) = array.kudosCount(row) = value
   }
-//  override val address = new Address[Accessors] with CursorLike {
-//    override val length = UserCursor.this.length
-//    val zipCode = new Accessors[String] {
-//      def apply() = array.address.zipCode(row)
-//      def update(value: String) = array.address.zipCode(row) = value
-//    }
-//    val city = new Accessors[String] {
-//      def apply() = array.address.city(row)
-//      def update(value: String) = array.address.city(row) = value
-//    }
-//  }
+  //  override val address = new Address[Accessors] with CursorLike {
+  //    override val length = UserCursor.this.length
+  //    val zipCode = new Accessors[String] {
+  //      def apply() = array.address.zipCode(row)
+  //      def update(value: String) = array.address.zipCode(row) = value
+  //    }
+  //    val city = new Accessors[String] {
+  //      def apply() = array.address.city(row)
+  //      def update(value: String) = array.address.city(row) = value
+  //    }
+  //  }
 }
 
 
@@ -197,20 +224,42 @@ class RecordArraysTest extends FlatSpecLike with Matchers {
 //    def foo[[V] Array[V]] = ???
 
     val n = 10000000
-    val times = 30
+    val times = 100
+    val warmups = 10
 
     val cursorRunner = new CursorRunner(n)
+    val cursorFactoryRunner = new CursorFactoryRunner(n)
     val arrayRunner = new ArrayRunner(n)
-    for (i <- 0 until times) {
-      val r1 = time("sum with cursor") {
-        cursorRunner.sum
-      }
-      val r2 = time("sum with array ") {
-        arrayRunner.sum
-      }
-      if (r1 != r2) sys.error("err!")
+    val customCursorRunner = new CustomCursorRunner(n)
+    val customFinalCursorRunner = new CustomFinalCursorRunner(n)
+
+    val timers = new Timers
+
+    for (i <- 0 until (warmups + times)) {
+      if (i == warmups) timers.clear()
+      val values = Seq(
+        timers.time("generated cursor") {
+          cursorRunner.sum
+        },
+        timers.time("generated cursor factory") {
+          cursorFactoryRunner.sum
+        },
+        timers.time("custom cursor (final)") {
+          customFinalCursorRunner.sum
+        },
+        timers.time("custom cursor") {
+          customCursorRunner.sum
+        },
+        timers.time("array ") {
+          arrayRunner.sum
+        }
+      )
+
+      if (values.toSet.size != 1) sys.error(s"err: $values")
       println()
     }
+
+    timers.printAverages()
   }
 
 //

@@ -6,13 +6,15 @@ import java.util.Date
 final class CursorRunner(n: Int) {
 
   private[this] val userArrayFactory = recordArrayFactory[User]
-//  private[this] val userGetters = recordGetters[User]
+//  private[this] val userCursorFactory = recordCursorFactory[User]
+  //  private[this] val userGetters = recordGetters[User]
 
   private[this] val users: Record[User]#Array = userArrayFactory(n)
 
   {
     var i = 0
-    val cursor = new UserCursor(n, users)
+    val cursor = recordCursor[User](users, n)
+    //    val cursor = new UserCursor(users, n)
     while (cursor.next()) {
       cursor.kudosCount() = i
       i += 1
@@ -21,7 +23,94 @@ final class CursorRunner(n: Int) {
 
   def sum: Long = {
     var total = 0L
-    val cursor = new UserCursor(n, users)
+    val cursor = recordCursor[User](users, n)
+    //    val cursor = new UserCursor(users, n)
+    while (cursor.next()) {
+      total += cursor.kudosCount()
+    }
+    total
+  }
+}
+
+final class CursorFactoryRunner(n: Int) {
+
+  private[this] val userArrayFactory = recordArrayFactory[User]
+  private[this] val userCursorFactory = recordCursorFactory[User]
+  //  private[this] val userGetters = recordGetters[User]
+
+  private[this] val users: Record[User]#Array = userArrayFactory(n)
+
+  {
+    var i = 0
+    val cursor = userCursorFactory(users, n)
+    //    val cursor = new UserCursor(users, n)
+    while (cursor.next()) {
+      cursor.kudosCount() = i
+      i += 1
+    }
+  }
+
+  def sum: Long = {
+    var total = 0L
+    val cursor = userCursorFactory(users, n)
+    //    val cursor = new UserCursor(users, n)
+    while (cursor.next()) {
+      total += cursor.kudosCount()
+    }
+    total
+  }
+}
+
+final class CustomCursorRunner(n: Int) {
+
+  private[this] val userArrayFactory = recordArrayFactory[User]
+  //  private[this] val userCursorFactory = (users: Record[User]#Array, size: Int) => new UserCursor(users, n)
+  //  private[this] val userGetters = recordGetters[User]
+
+  private[this] val users: Record[User]#Array = userArrayFactory(n)
+
+  {
+    var i = 0
+    //    val cursor = userCursorFactory(users, n)
+    val cursor = new UserCursor(users, n)
+    while (cursor.next()) {
+      cursor.kudosCount() = i
+      i += 1
+    }
+  }
+
+  def sum: Long = {
+    var total = 0L
+    //    val cursor = userCursorFactory(users, n)
+    val cursor = new UserCursor(users, n)
+    while (cursor.next()) {
+      total += cursor.kudosCount()
+    }
+    total
+  }
+}
+final class CustomFinalCursorRunner(n: Int) {
+
+  private[this] val userArrayFactory = recordArrayFactory[User]
+  //  private[this] val userCursorFactory = (users: Record[User]#Array, size: Int) => new UserCursor(users, n)
+  //  private[this] val userGetters = recordGetters[User]
+
+  private[this] val users: Record[User]#Array = userArrayFactory(n)
+
+  {
+    var i = 0
+    //    val cursor = userCursorFactory(users, n)
+    val cursor = new FinalUserCursor(users, n)
+    while (cursor.next()) {
+      cursor.kudosCount() = i
+      i += 1
+    }
+  }
+
+  def sum: Long = {
+    var total = 0L
+    //    val cursor = userCursorFactory(users, n)
+    val cursor = new FinalUserCursor(users, n)
     while (cursor.next()) {
       total += cursor.kudosCount()
     }

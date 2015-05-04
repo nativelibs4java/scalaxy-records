@@ -31,6 +31,10 @@ scalacOptions ++= Seq(
   "-Xlog-free-types"
 )
 
+scalacOptions ++= Seq(
+  "-optimise", "-Yclosure-elim", "-Yinline"
+)
+
 homepage := Some(url("https://github.com/nativelibs4java/scalaxy-records"))
 
 pomExtra := (

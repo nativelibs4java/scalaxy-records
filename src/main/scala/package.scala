@@ -61,7 +61,7 @@ package records {
 //      }
 //      this.row = row
 //    }
-    def next(): Boolean = {
+    @inline final def next(): Boolean = {
       val nextRow = row + 1
       if (nextRow < length) {
         setRow(nextRow)
@@ -100,6 +100,11 @@ package object records {
 
   type Identity[T] = T
 
+  private[this] def debugResult[V](v: V): V = {
+    println("result = " + v)
+    v
+  }
+
   /**
    * Given the following record:
    *
@@ -124,8 +129,10 @@ package object records {
 
     try {
       // Would normally bring a c.WeakTypeTag, but it seems to not work with higher-kinded types here, so getting the type straight from the macro call.
-      val q"${_}[$typeClassTpt]" = c.macroApplication
-      val typeClassTpe: Type = typeClassTpt.tpe
+      val typeClassTpe = c.macroApplication match {
+        case q"${_}[$typeClassTpt]" => typeClassTpt.tpe
+        case q"${_}[$typeClassTpt](..${_})" => typeClassTpt.tpe
+      }
 
       // Get the unique type parameter (`C[_]` in the example above).
       val List(typeParam) = typeClassTpe.typeConstructor.typeParams
@@ -209,15 +216,15 @@ package object records {
 
     val sizeName = TermName(c.freshName("size"))
     val decls = abstractTerms.map { case (name, tpe) =>
-      q"override val $name = new _root_.scala.Array[$tpe]($sizeName)"
+      q"override val $name = new scala.Array[$tpe]($sizeName)"
     }
-    c.Expr[Record[R]#ArrayFactory](q"""
+    debugResult(c.Expr[Record[R]#ArrayFactory](q"""
       ($sizeName: Int) => new ${typeClassTpe.typeSymbol}[scala.Array]
-          //with _root_.scalaxy.records.ArrayLike
+          //with scalaxy.records.ArrayLike
           {
         ..$decls
       }
-    """)
+    """))
     //override val length = $sizeName
   }
 
@@ -237,20 +244,20 @@ package object records {
     val decls = abstractTerms.map {
       case (name, tpe) =>
         q"""
-          override val $name = _root_.scalaxy.reified.reified[($arrayTpe, Int) => $tpe] {
+          override val $name = scalaxy.reified.reified[($arrayTpe, Int) => $tpe] {
             (record: $arrayTpe, row: Int) => record.$name(row)
           }
         """
     }
-    c.Expr[Record[R]#Getters](q"""
-      new _root_.scalaxy.records.Record[${typeClassTpe.typeSymbol}]#Getters { ..$decls }
-    """)
+    debugResult(c.Expr[Record[R]#Getters](q"""
+      new scalaxy.records.Record[${typeClassTpe.typeSymbol}]#Getters { ..$decls }
+    """))
   }
 
-  def cursorFactory[R[_[_]] <: Record[R]]: Record[R]#CursorFactory =
-    macro cursorFactoryImpl[R]
+  def recordCursorFactory[R[_[_]] <: Record[R]]: Record[R]#CursorFactory =
+    macro recordCursorFactoryImpl[R]
 
-  def cursorFactoryImpl
+  def recordCursorFactoryImpl
       [R[_[_]] <: Record[R]]
       (c: Context)
       : c.Expr[Record[R]#CursorFactory] =
@@ -259,29 +266,48 @@ package object records {
 
     val (typeClassTpe, typeParam, abstractTerms) = getRecordInfo[R](c)
 
-    val arrayTpe = tq"${typeClassTpe.typeSymbol}[_root_.scala.Array]"
-    val cursorLikeTpe = tq"scalaxy.records.CursorLike"
+    val arrayTpe = tq"${typeClassTpe.typeSymbol}[scala.Array]"
     val arrayName = TermName(c.freshName("array"))
     val lengthName = TermName(c.freshName("length"))
-//    $arrayName.${abstractTerms.keys.iterator.next}.length
+
+    debugResult(c.Expr[Record[R]#CursorFactory](q"""
+      ($arrayName: $arrayTpe, $lengthName: Int) =>
+        ${recordCursorImpl[R](c)(c.Expr[Record[R]#Array](q"$arrayName"), c.Expr[Int](q"$lengthName"))}
+    """))
+  }
+
+
+  def recordCursor[R[_[_]] <: Record[R]](array: Record[R]#Array, length: Int): Record[R]#Cursor =
+    macro recordCursorImpl[R]
+
+  def recordCursorImpl
+      [R[_[_]] <: Record[R]]
+      (c: Context)
+      (array: c.Expr[Record[R]#Array], length: c.Expr[Int])
+      : c.Expr[Record[R]#Cursor] =
+  {
+    import c.universe._
+
+    val (typeClassTpe, typeParam, abstractTerms) = getRecordInfo[R](c)
+
+    val arrayName = TermName(c.freshName("array"))
 
     val decls = abstractTerms.map {
       case (name, tpe) =>
         q"""
           override val $name = new scalaxy.records.Accessors[$tpe] {
-            def apply() = $arrayName.$name(row)
-            def update(value: $tpe) = $arrayName.$name(row) = value
+            @inline def apply() = $arrayName.$name(row)
+            @inline def update(value: $tpe) = $arrayName.$name(row) = value
           }
         """
     }
-    c.Expr[Record[R]#CursorFactory](q"""
-      ($arrayName: $arrayTpe, $lengthName: Int) =>
-        new ${typeClassTpe.typeSymbol}[scalaxy.records.Accessors]
-            with $cursorLikeTpe {
-          override val length = $lengthName
+    debugResult(c.Expr[Record[R]#Cursor](q"""
+        new ${typeClassTpe.typeSymbol}[scalaxy.records.Accessors] with scalaxy.records.CursorLike {
+          private[this] val $arrayName = $array
+          override val length = $length
           ..$decls
         }
-    """)
+    """))
   }
 
 //  def cachedCursorFactory[Source, R[_[_]] <: Record[R]]: Record[R]#CachedCursorFactory[Source] =
