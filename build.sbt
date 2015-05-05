@@ -35,6 +35,9 @@ scalacOptions ++= Seq(
   "-optimise", "-Yclosure-elim", "-Yinline"
 )
 
+javaOptions ++= Seq("-Xms4G", "-Xmx4G")
+// javaOptions ++= Seq("-Xms1g", "-Xmx1g")
+
 homepage := Some(url("https://github.com/nativelibs4java/scalaxy-records"))
 
 pomExtra := (

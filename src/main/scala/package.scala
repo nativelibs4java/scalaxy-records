@@ -100,8 +100,8 @@ package object records {
 
   type Identity[T] = T
 
-  private[this] def debugResult[V](v: V): V = {
-    println("result = " + v)
+  private[this] def debugResult[V](c: Context)(v: V): V = {
+    // println(s"result[${c.macroApplication}] = $v")
     v
   }
 
@@ -218,7 +218,7 @@ package object records {
     val decls = abstractTerms.map { case (name, tpe) =>
       q"override val $name = new scala.Array[$tpe]($sizeName)"
     }
-    debugResult(c.Expr[Record[R]#ArrayFactory](q"""
+    debugResult(c)(c.Expr[Record[R]#ArrayFactory](q"""
       ($sizeName: Int) => new ${typeClassTpe.typeSymbol}[scala.Array]
           //with scalaxy.records.ArrayLike
           {
@@ -249,7 +249,7 @@ package object records {
           }
         """
     }
-    debugResult(c.Expr[Record[R]#Getters](q"""
+    debugResult(c)(c.Expr[Record[R]#Getters](q"""
       new scalaxy.records.Record[${typeClassTpe.typeSymbol}]#Getters { ..$decls }
     """))
   }
@@ -269,10 +269,23 @@ package object records {
     val arrayTpe = tq"${typeClassTpe.typeSymbol}[scala.Array]"
     val arrayName = TermName(c.freshName("array"))
     val lengthName = TermName(c.freshName("length"))
+    val className = TypeName(c.freshName("RecordClass"))
 
-    debugResult(c.Expr[Record[R]#CursorFactory](q"""
-      ($arrayName: $arrayTpe, $lengthName: Int) =>
-        ${recordCursorImpl[R](c)(c.Expr[Record[R]#Array](q"$arrayName"), c.Expr[Int](q"$lengthName"))}
+    val decls = abstractTerms.map {
+      case (name, tpe) =>
+        q"""
+          override val $name = new scalaxy.records.Accessors[$tpe] {
+            @inline def apply() = $arrayName.$name(row)
+            @inline def update(value: $tpe) = $arrayName.$name(row) = value
+          }
+        """
+    }
+    debugResult(c)(c.Expr[Record[R]#CursorFactory](q"""
+        class $className($arrayName: $arrayTpe, val length: Int)
+            extends ${typeClassTpe.typeSymbol}[scalaxy.records.Accessors] with scalaxy.records.CursorLike {
+          ..$decls
+        }
+        ($arrayName: $arrayTpe, $lengthName: Int) => new $className($arrayName, $lengthName)
     """))
   }
 
@@ -290,7 +303,9 @@ package object records {
 
     val (typeClassTpe, typeParam, abstractTerms) = getRecordInfo[R](c)
 
+    val arrayTpe = tq"${typeClassTpe.typeSymbol}[scala.Array]"
     val arrayName = TermName(c.freshName("array"))
+    val className = TypeName(c.freshName("RecordClass"))
 
     val decls = abstractTerms.map {
       case (name, tpe) =>
@@ -301,12 +316,13 @@ package object records {
           }
         """
     }
-    debugResult(c.Expr[Record[R]#Cursor](q"""
-        new ${typeClassTpe.typeSymbol}[scalaxy.records.Accessors] with scalaxy.records.CursorLike {
-          private[this] val $arrayName = $array
-          override val length = $length
+    debugResult(c)(c.Expr[Record[R]#Cursor](q"""
+        class $className($arrayName: $arrayTpe, val length: Int)
+            extends ${typeClassTpe.typeSymbol}[scalaxy.records.Accessors]
+            with scalaxy.records.CursorLike {
           ..$decls
         }
+        new $className($array, $length)
     """))
   }
 
